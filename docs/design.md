@@ -46,7 +46,7 @@ Any of these counts as a failure:
 
 ### Layers
 
-Each layer works on its own; any one of them holding is enough.
+Three layers, each enough on its own.
 
 1. **Links are stored and shown defanged.** A link is parsed once into a `ScamUrl`
    value with no method that returns the live form — it prints as
@@ -60,17 +60,9 @@ Each layer works on its own; any one of them holding is enough.
    urlscan's API. The destination host is never taken from a scam link. Redirects are
    not followed unless the next host is also on the allowlist. A DNS lookup of the
    scam domain goes to the DoH resolver, so the scammer's nameserver sees the
-   resolver, not you.
-3. **Runtime tripwire.** At startup humboldt wraps Node's `fetch`, `http`, `https`,
-   `net`, `tls`, `dns` and `child_process` so that any connection to a host outside
-   the allowlist, and any attempt to start a process, throws and aborts the run.
-   (Node's own permission model will be checked as an extra layer, but not relied on.)
-4. **It runs in a container behind an allowlisting proxy.** The default way to run
-   humboldt is a container with no browser and no `open` command, whose only network
-   route is a [Squid](https://www.squid-cache.org/) proxy (yes, really) allowing the
-   same hosts as layer 2. Even a bug in layers 1–3 cannot reach a scam host or open
-   anything on your Mac.
-5. **The AI is fenced in too.** The repo ships Claude Code project settings that, in
+   resolver, not you. humboldt never starts another process, so nothing can hand a
+   link to a browser or `open`.
+3. **The AI is fenced in too.** The repo ships Claude Code project settings that, in
    this repo, deny `WebFetch`, every browser tool, and `curl`, `wget`, `open` and
    `nc` in Bash, plus a `PreToolUse` hook that blocks any tool call whose input
    contains a live (non-defanged) URL to a host outside the allowlist. Test fixtures
@@ -79,31 +71,27 @@ Each layer works on its own; any one of them holding is enough.
 
 ### Tests that prove it
 
-Each of these must be shown to **fail** when its layer is deliberately broken; a
-safety test that has never failed proves nothing.
+- **Honeypot, end to end.** The suite runs a local trap server, feeds messages
+  pointing at it through the whole pipeline, and asserts the trap saw **zero**
+  connections. Shown to fail once with the allowlist removed — a safety test that
+  has never failed proves nothing.
+- **Output never contains a live link.** Every output — stdout, ledger, `.eml`
+  drafts — is checked for anything a terminal or mail app would make clickable.
+- **Allowlist bypass attempts are rejected:** IP literals,
+  `https://urlscan.io@evil.test`, look-alike hosts, a trailing dot, and redirects to
+  outside hosts.
+- **Link forms the extractor must catch:** `hxxp`, `[.]`, `(dot)`, missing scheme,
+  `www.` prefixes and zero-width characters.
+- **Static check:** no module outside the egress module imports a network or
+  process API. CI fails otherwise.
+- **AI fence:** the `PreToolUse` hook blocks a live scam-style URL in a `WebFetch`,
+  `Bash` and browser tool call, and lets a defanged one through. Shown to fail once
+  with the hook disabled.
 
-- **Honeypot, end to end.** The test suite runs a trap server and a trap DNS name.
-  It feeds messages pointing at them, in every form below, through the whole
-  pipeline with real (allowlisted) network code, then asserts the trap saw **zero**
-  connections and zero DNS queries.
-- **Output never contains a live link.** Property-based tests generate messages with
-  links in many shapes and assert that no output — stdout, ledger, logs, `.eml`
-  drafts — contains anything a terminal or mail app would turn into a clickable link.
-- **Allowlist bypass attempts are rejected,** each as its own test: IP literals (v4,
-  v6, decimal, octal), `https://urlscan.io@evil.test`, look-alike and IDN hosts, a
-  trailing dot, mixed case, redirects to outside hosts, and DNS answers pointing at
-  private or loopback addresses.
-- **Link forms the extractor must catch:** `hxxp`, `[.]`, `(dot)`, `[:]//`, missing
-  scheme, `www.` prefixes, Unicode look-alikes, zero-width characters, and links
-  split across lines.
-- **Static checks:** no module outside the egress module imports a network or
-  process API; no dependency is added that makes network calls on its own (link
-  previews, update checkers, telemetry). CI fails on either.
-- **AI fence:** tests feed the `PreToolUse` hook a live scam-style URL in a `WebFetch`,
-  `Bash` and browser tool call and assert each is blocked, and that a defanged URL
-  passes.
-- **Container fence:** a CI job runs humboldt in its container and asserts that a
-  request to a non-allowlisted host fails at the proxy.
+Considered and left out as overkill for now: a runtime tripwire wrapping Node's
+network APIs, and running humboldt in a container behind an allowlisting
+[Squid](https://www.squid-cache.org/) proxy. Either can be added later if the tool
+grows beyond one person's laptop.
 
 ### What the risk actually is
 
@@ -111,7 +99,7 @@ For calibration, not reassurance: on an up-to-date browser, merely loading a phi
 page usually does little damage on its own. The real harm comes from typing
 credentials or codes into it, or downloading and running a file. Loading it does
 confirm to the scammer that a real person clicked and reveals your IP address — reason
-enough to never do it, and the layers above make sure humboldt can't.
+enough to never do it. The layers are sized to that risk.
 
 ## Usage (v0)
 
@@ -180,25 +168,27 @@ keychain, never the repo.
 
 ## Milestones
 
-- **M0 — safety first:** the Claude Code fence (layer 5) lands in the first commit,
-  before any code. Then the `ScamUrl` type, egress module, runtime tripwire and
-  container, each with its tests (including the honeypot), proven by breaking them.
-  Then extract, classify, DNS/RDAP enrichment and a printed report plan. No reports
-  are sent.
+- **M0 — safety first:** the Claude Code fence (layer 3) lands before any code.
+  Then the `ScamUrl` type and the egress module with their tests, including the
+  honeypot. Then extract, classify, DNS/RDAP enrichment and a printed report plan.
+  No reports are sent.
 - **M1 — report:** urlscan evidence, Netcraft submission, drafted host/registrar
   emails (`.eml` files to open in your mail app).
 - **M2 — follow up:** SQLite ledger, `humboldt status`, duplicate prevention.
 - **M3 — Claude Code skill:** paste a message into Claude Code; it runs humboldt and
   helps word the drafts.
 
+## Decisions
+
+- **Licence:** MIT.
+- **Visibility:** public from day one.
+- **Reporter email:** a dedicated project address, set in local configuration and
+  never committed, so the public repo doesn't hand it to scrapers.
+
 ## Open questions
 
-1. **Licence.** MIT (matches phishing.support, simplest for reuse)?
-2. **Visibility.** Public from day one, or private until M1 works?
-3. **Reporter email.** A dedicated address (e.g. an alias) keeps provider replies and
-   any scammer attention away from your personal inbox. Which one?
-4. **Netcraft terms and rate limits.** Their API docs need JavaScript; read them in a
+1. **Netcraft terms and rate limits.** Their API docs need JavaScript; read them in a
    browser before M1.
-5. **urlscan quotas** for a free account — check before M1.
-6. **Screenshots as input.** Many chat scams are images. OCR input is a possible
+2. **urlscan quotas** for a free account — check before M1.
+3. **Screenshots as input.** Many chat scams are images. OCR input is a possible
    later milestone.
