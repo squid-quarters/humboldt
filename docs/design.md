@@ -207,8 +207,10 @@ keychain, never the repo.
 - **M2 — follow up:** SQLite ledger, `humboldt status`, duplicate prevention.
 - **M3 — Claude Code skill:** Claude runs `pbpaste | humboldt report` (no link in the
   command; an installed release build is the sandbox's one excluded command,
-  guarded by its own egress allowlist) and helps word the drafts. Until then,
-  Claude never runs humboldt on real input — only on test fixtures.
+  guarded by its own egress allowlist) and helps word the drafts. The skill calls
+  that build by its absolute path: `excludedCommands` matches command text, so a
+  globally linked working tree would otherwise run unsandboxed. Until then, Claude
+  never runs humboldt on real input — only on test fixtures.
 
 ## Decisions
 
