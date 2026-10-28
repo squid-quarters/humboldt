@@ -59,9 +59,13 @@ three above.
    that defangs every URL-like or hostname-like substring (`tg-verify[.]example`,
    `hxxps://…`), including bare domains, `www.` forms, URLs nested in query strings,
    and URLs that come back from APIs (urlscan's final URL, Netcraft's status), and
-   strips control characters so no terminal hyperlink escape gets through. Drafted
-   emails are plain text with no HTML. Only one function produces the live string,
-   and only as a JSON field for Netcraft or urlscan — never as a request address.
+   strips control characters so no terminal hyperlink escape gets through. Two
+   things stay live: links on a fixed list of trusted hosts (urlscan result pages,
+   Netcraft, the Safe Browsing form) and the addresses in email headers, so drafts
+   stay sendable and evidence stays clickable. Drafted emails are plain text with
+   no HTML. `ScamUrl` has exactly two sanctioned accessors: the live URL, only as a
+   JSON field for Netcraft or urlscan; and the bare hostname, only as the query
+   value for a DoH or RDAP lookup. Neither is ever used as a request address.
 3. **One egress module, with a fixed allowlist.** All network access goes through a
    single module that connects only to hosts in the code: Cloudflare's
    DNS-over-HTTPS resolver (which doesn't forward your network's subnet to the
@@ -71,13 +75,16 @@ three above.
    links are not followed. humboldt never starts another process, so nothing can
    hand a link to a browser or `open`.
 4. **Claude Code is fenced in.** The repo's Claude Code project settings turn on
-   the sandbox with a network allowlist (package registries and GitHub), so no
-   command Claude runs here — `curl`, `node -e`, `python3`, anything — can reach
-   another host. Deny rules for `WebFetch`, browser tools and `agent-browser`, plus a
-   `PreToolUse` hook that blocks tool calls containing a live URL outside the
-   allowlist, are the backstop. Test fixtures use only reserved names (`.test`,
-   `.invalid`, `example.*`). This fence covers Claude Code only; don't use other
-   coding agents on this repo without an equivalent.
+   the sandbox with a network allowlist (package registries and GitHub) and
+   `allowUnsandboxedCommands: false`, so no command Claude runs here — `curl`,
+   `node -e`, `python3`, anything — can reach another host or retry outside the
+   sandbox. The one exception is humboldt itself (`pbpaste` and `humboldt report`
+   in `sandbox.excludedCommands`), which needs its own hosts and is guarded by
+   layer 3. Deny rules for `WebFetch`, browser tools and `agent-browser`, plus a
+   `PreToolUse` hook that blocks tool calls containing a live URL to a host outside
+   the sandbox allowlist, are the backstop. Test fixtures use only reserved names
+   (`.test`, `.invalid`, `example.*`). This fence covers Claude Code only; don't use
+   other coding agents on this repo without an equivalent.
 
 ### Tests that prove it
 
@@ -93,13 +100,15 @@ three above.
   `https://urlscan.io@evil.test`, look-alike hosts, a trailing dot.
 - **Link forms the extractor must catch:** `hxxp`, `[.]`, `(dot)`, missing scheme,
   `www.` prefixes, nested URLs and zero-width characters.
-- **Static check:** oxlint's `no-restricted-imports` (`net`, `http`, `https`, `dns`,
-  `tls`, `dgram`, `child_process`, `worker_threads`, `undici`) and
-  `no-restricted-globals` (`fetch`, `WebSocket`, `EventSource`) outside the egress
-  module. CI fails otherwise.
-- **Claude Code fence:** the hook blocks a live scam-style URL in a `WebFetch`,
-  `Bash` and browser tool call and lets a defanged one through; a sandboxed command
-  to a non-allowlisted host fails. Shown to fail once with the hook disabled.
+- **Static check:** outside the egress module, oxlint's `no-restricted-imports`
+  bans `net`, `http`, `http2`, `https`, `dns`, `tls`, `dgram`, `child_process`,
+  `worker_threads` and `undici` in both bare and `node:` forms;
+  `no-restricted-globals` bans `fetch`, `WebSocket` and `EventSource`; and
+  `no-restricted-properties` bans `globalThis.fetch`. CI fails otherwise.
+- **Claude Code fence:** the hook script is unit-tested directly on sample tool
+  inputs: it blocks a live scam-style URL in a `WebFetch`, `Bash` and browser tool
+  call and lets a defanged one through, and the test fails with the check removed.
+  Separately, a sandboxed `curl` to a non-allowlisted host is shown to fail.
 
 Considered and left out as overkill for now: a runtime tripwire wrapping Node's
 network APIs, and running humboldt in a container behind an allowlisting
@@ -128,8 +137,8 @@ $ humboldt status               # re-check open reports
    Deduplicate.
 2. **Classify each target.**
    - Web URL → the full pipeline below.
-   - Telegram account → in-app *Report → Scam*; `@notoscam` only when it
-     impersonates you (manual; humboldt prints the steps).
+   - Telegram account → Telegram's in-app report (choose the scam or spam reason);
+     `@notoscam` only when it impersonates you (manual; humboldt prints the steps).
    - WhatsApp number / phone number → in-app report + ScamShield (manual).
 3. **Enrich a web URL** (read-only):
    - DNS: resolve A/AAAA via DoH.
@@ -194,7 +203,8 @@ keychain, never the repo.
   emails (`.eml` files to open in your mail app).
 - **M2 — follow up:** SQLite ledger, `humboldt status`, duplicate prevention.
 - **M3 — Claude Code skill:** Claude runs `pbpaste | humboldt report` (no link in the
-  command, so the fence stays intact) and helps word the drafts.
+  command; humboldt is the sandbox's one excluded command, guarded by its own
+  egress allowlist) and helps word the drafts.
 
 ## Decisions
 
