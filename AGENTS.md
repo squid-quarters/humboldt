@@ -1,9 +1,10 @@
 # AGENTS.md
 
 humboldt reports scam links that arrive over chat apps (Telegram, WhatsApp, SMS) to
-the people who can take them down. Read [`docs/design.md`](docs/design.md) before
-changing behaviour: it holds the motivation, the safety design, the milestones and
-the decisions already made. Current status is in `README.md`.
+the people who can take them down. Before changing behaviour or direction, read
+[`docs/background.md`](docs/background.md) (why the project exists and what
+matters to the owner) and [`docs/design.md`](docs/design.md) (the safety design,
+the milestones and the decisions already made). Current status is in `README.md`.
 
 ## Why it exists
 
