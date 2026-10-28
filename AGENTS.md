@@ -56,4 +56,5 @@ This is the project's top rule, and it binds every agent on every task:
 - Every change goes through a pull request to `main`. Get an independent review
   before merging, re-review after fixes, and record the reviewed head SHA on the PR.
 - Conventional Commits.
-- When a change alters the design, update `docs/design.md` in the same PR.
+- When a change alters the design, update `docs/design.md` in the same PR. When
+  the owner's intent or decisions change, update `docs/background.md`.
