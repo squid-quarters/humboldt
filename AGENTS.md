@@ -33,9 +33,10 @@ This is the project's top rule, and it binds every agent on every task:
   processes.
 - M0 lands the Claude Code fence (sandbox network allowlist and hook) before any
   other code.
-- That fence covers Claude Code only. Run any other agent in its own sandbox with
+- That fence covers Claude Code only. Any other agent runs in its own sandbox with
   network access disabled, so each command that needs the network (package
-  installs, `gh`) goes to the owner for approval. Until M0 lands, Claude Code
+  installs, `gh`) goes to the owner for approval. If your network access isn't
+  off, stop and tell the owner before doing anything else. Until M0 lands, Claude Code
   follows the same rule. Never use ad-hoc network tools (`curl`, `wget`,
   `node -e`, `python3 -c`) or web-fetch and browser tools in this repo.
 - The owner wants this safe, not over-engineered. Don't add layers the design
