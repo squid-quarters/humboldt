@@ -20,17 +20,24 @@ the decisions already made. Current status is in `README.md`.
 This is the project's top rule, and it binds every agent on every task:
 
 - Never fetch, browse, screenshot, `open` or resolve (DNS, WHOIS, RDAP) a real scam
-  or phishing URL — not to check it, not in a test. Ask the owner if you think you
-  need to.
+  or phishing URL — not to check it, not in a test. If you need something from
+  one, ask the owner to get it for you.
 - Use only reserved names in fixtures and examples (`.test`, `.invalid`,
   `example.com`). Write any real link defanged: `hxxps://evil[.]test`.
 - Don't run humboldt on real input; run it on fixtures. Real input is only for an
-  installed release build, from M3 on.
-- Network code lives only in the egress module and talks only to allowlisted
-  hosts. The host it connects to never comes from a scam link or an API response.
-- The Claude Code fence (sandbox network allowlist and hook) covers Claude Code
-  only, and it doesn't exist until M0 lands it. Any other agent, and Claude before
-  then, works with network access off and asks before each install or `gh` call.
+  installed release build, from M3 on (see M3 in the design).
+- The safety layers in the design are binding on the code: scam text arrives on
+  stdin and is never put in argv, logged or echoed; every output goes through the
+  one defanging function; network code lives only in the egress module and never
+  takes its host from a scam link or an API response; humboldt starts no
+  processes.
+- M0 lands the Claude Code fence (sandbox network allowlist and hook) before any
+  other code.
+- That fence covers Claude Code only. Run any other agent in its own sandbox with
+  network access disabled, so each command that needs the network (package
+  installs, `gh`) goes to the owner for approval. Until M0 lands, Claude Code
+  follows the same rule. Never use ad-hoc network tools (`curl`, `wget`,
+  `node -e`, `python3 -c`) or web-fetch and browser tools in this repo.
 - The owner wants this safe, not over-engineered. Don't add layers the design
   rejected (a runtime tripwire, a container proxy) without asking.
 
