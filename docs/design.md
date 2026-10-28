@@ -78,11 +78,13 @@ three above.
    the sandbox with a network allowlist (package registries and GitHub) and
    `allowUnsandboxedCommands: false`, so no command Claude runs here — `curl`,
    `node -e`, `python3`, anything — can reach another host or retry outside the
-   sandbox. The one exception is humboldt itself (`pbpaste` and `humboldt report`
-   in `sandbox.excludedCommands`), which needs its own hosts and is guarded by
-   layer 3. Deny rules for `WebFetch`, browser tools and `agent-browser`, plus a
-   `PreToolUse` hook that blocks tool calls containing a live URL to a host outside
-   the sandbox allowlist, are the backstop. Test fixtures use only reserved names
+   sandbox. From M3 on, the one exception is an **installed release build** of
+   humboldt (`pbpaste` and `humboldt report` in `sandbox.excludedCommands`), which
+   needs its own hosts and is guarded by layer 3 — never the working tree Claude is
+   editing. Deny rules for `WebFetch`, browser tools and `agent-browser`, plus a
+   `PreToolUse` hook on `WebFetch`, `Bash` and browser tools that blocks a live URL
+   to a host outside the sandbox allowlist, are the backstop. (The hook leaves
+   `Write`/`Edit` alone, so the egress module and the RDAP snapshot can be written.) Test fixtures use only reserved names
    (`.test`, `.invalid`, `example.*`). This fence covers Claude Code only; don't use
    other coding agents on this repo without an equivalent.
 
@@ -96,7 +98,8 @@ three above.
 - **Output never contains a live link.** Every output — stdout, ledger, `.eml`
   drafts — is checked for anything a terminal or mail app would make clickable,
   bare domains included.
-- **Allowlist bypass attempts are rejected:** IP literals,
+- **Allowlist bypass attempts are rejected** by both the egress allowlist and the
+  trusted-host list that keeps links live: IP literals,
   `https://urlscan.io@evil.test`, look-alike hosts, a trailing dot.
 - **Link forms the extractor must catch:** `hxxp`, `[.]`, `(dot)`, missing scheme,
   `www.` prefixes, nested URLs and zero-width characters.
@@ -203,8 +206,9 @@ keychain, never the repo.
   emails (`.eml` files to open in your mail app).
 - **M2 — follow up:** SQLite ledger, `humboldt status`, duplicate prevention.
 - **M3 — Claude Code skill:** Claude runs `pbpaste | humboldt report` (no link in the
-  command; humboldt is the sandbox's one excluded command, guarded by its own
-  egress allowlist) and helps word the drafts.
+  command; an installed release build is the sandbox's one excluded command,
+  guarded by its own egress allowlist) and helps word the drafts. Until then,
+  Claude never runs humboldt on real input — only on test fixtures.
 
 ## Decisions
 
