@@ -1,9 +1,10 @@
 # AGENTS.md
 
 humboldt reports scam links that arrive over chat apps (Telegram, WhatsApp, SMS) to
-the people who can take them down. Read [`docs/design.md`](docs/design.md) before
-changing behaviour: it holds the motivation, the safety design, the milestones and
-the decisions already made. Current status is in `README.md`.
+the people who can take them down. Before changing behaviour or direction, read
+[`docs/background.md`](docs/background.md) (why the project exists and what
+matters to the owner) and [`docs/design.md`](docs/design.md) (the safety design,
+the milestones and the decisions already made). Current status is in `README.md`.
 
 ## Why it exists
 
@@ -55,4 +56,5 @@ This is the project's top rule, and it binds every agent on every task:
 - Every change goes through a pull request to `main`. Get an independent review
   before merging, re-review after fixes, and record the reviewed head SHA on the PR.
 - Conventional Commits.
-- When a change alters the design, update `docs/design.md` in the same PR.
+- When a change alters the design, update `docs/design.md` in the same PR. When
+  the owner's intent or decisions change, update `docs/background.md`.
